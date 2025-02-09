@@ -1,68 +1,48 @@
 import { Webhook } from "svix";
-import User from "../models/User.js"; // Ensure the path and file extension are correct
+import User from "../models/User.js";
 
 export const clerkWebhooks = async (req, res) => {
   try {
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-
-    // Log the raw body for debugging
-    console.log("Raw Body: ", req.rawBody);
-
-    // Log the headers to ensure necessary data is included
-    console.log("Headers: ", req.headers);
-
-    // Verify the webhook using raw body
-    await whook.verify(req.rawBody, {
+    await whook.verify(JSON.stringify(req.body), {
       "svix-id": req.headers["svix-id"],
       "svix-timestamp": req.headers["svix-timestamp"],
       "svix-signature": req.headers["svix-signature"],
     });
 
-    // Log the data object to check its structure
     const { data, type } = req.body;
-    console.log("Webhook Data: ", data);
-
-    switch (type) {
+    switch (key) {
       case "user.created": {
-        if (!data.email_addresses || data.email_addresses.length === 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: "Invalid user data" });
-        }
         const userData = {
           _id: data.id,
-          email: data.email_addresses[0].email_address, // Ensure this field exists
-          name: `${data.first_name || ""} ${data.last_name || ""}`, // Handle potential undefined values
-          imageUrl: data.image_url || null, // Default to null if image_url is not provided
+          email: data.email_addresses[0].email_address,
+          name: data.first_name + " " + data.last_name,
+          imageUrl: data.image_url,
         };
         await User.create(userData);
-        return res.json({ success: true });
+        res.json({});
+        break;
       }
       case "user.updated": {
-        if (!data.email_addresses || data.email_addresses.length === 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: "Invalid user data" });
-        }
         const userData = {
-          email: data.email_addresses[0].email_address, // Ensure this field exists
-          name: `${data.first_name || ""} ${data.last_name || ""}`, // Handle potential undefined values
-          imageUrl: data.image_url || null, // Default to null if image_url is not provided
+          email: data.email_addresses[0].email_address,
+          name: data.first_name + " " + data.last_name,
+          imageUrl: data.image_url,
         };
         await User.findByIdAndUpdate(data.id, userData);
-        return res.json({ success: true });
+        res.json({});
+        break;
       }
       case "user.deleted": {
         await User.findByIdAndDelete(data.id);
-        return res.json({ success: true });
+        res.json({});
+        break;
       }
+
       default:
-        return res
-          .status(400)
-          .json({ success: false, message: "Unhandled event type" });
+        break;
     }
   } catch (error) {
-    console.error("Webhook Error:", error); // Log the error for debugging
-    return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: false, message: error.message });
   }
 };
