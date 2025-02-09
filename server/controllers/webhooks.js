@@ -5,6 +5,12 @@ export const clerkWebhooks = async (req, res) => {
   try {
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
+    // Log the raw body for debugging
+    console.log("Raw Body: ", req.rawBody);
+
+    // Log the headers to ensure necessary data is included
+    console.log("Headers: ", req.headers);
+
     // Verify the webhook using raw body
     await whook.verify(req.rawBody, {
       "svix-id": req.headers["svix-id"],
@@ -12,7 +18,9 @@ export const clerkWebhooks = async (req, res) => {
       "svix-signature": req.headers["svix-signature"],
     });
 
+    // Log the data object to check its structure
     const { data, type } = req.body;
+    console.log("Webhook Data: ", data);
 
     switch (type) {
       case "user.created": {
